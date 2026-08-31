@@ -2,3 +2,6 @@ build/
 *.o
 *.a
 *.exe
+gui_test_screenshot.*
+gui/*.ini
+*.ini

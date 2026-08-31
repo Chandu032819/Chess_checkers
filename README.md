@@ -89,11 +89,12 @@ command object that knows how to reverse itself (`execute()` /
 move), and promotion (piece-type swap). `Game` keeps a stack of these,
 which is what gives undo for free.
 
-**Observer** (`GameObserver`, `ConsoleObserver`) — the engine
-announces `onMoveMade` / `onInvalidMove` / `onGameEnd`; it has no idea
-who's listening. `ConsoleObserver` is the only place that knows how to
-print a board. A GUI (SFML/Qt) would be a second `GameObserver`
-implementation and nothing else in the codebase would change.
+**Observer** (`GameObserver`, `ConsoleObserver`, `GuiObserver`) — the
+engine announces `onMoveMade` / `onInvalidMove` / `onGameEnd`; it has
+no idea who's listening. `ConsoleObserver` prints to stdout,
+`GuiObserver` (in `gui/`) just remembers the latest event as plain
+state for the ImGui frontend to read each frame — engine/, chess/, and
+checkers/ needed zero changes to add it.
 
 **Prototype** (`Piece::clone()`, `Board::clone()`) — deep-copies a
 board so the engine can simulate "what if I made this move" (used by
@@ -150,10 +151,47 @@ the window closes automatically one ply later. Covered by
 
 ## Possible extensions
 
-- Swap `ConsoleObserver` for an SFML/Qt `GameObserver` — no engine
-  changes required.
 - AI opponent: `Board::clone()` already supports simulating moves, so
   a minimax/alpha-beta search can reuse it directly.
 - Load custom starting positions from a config file through the
   existing `PieceFactory` interfaces.
 - Majority-capture (must-capture-the-most) rule for Checkers.
+
+## GUI (Dear ImGui)
+
+`gui/` adds a graphical frontend on top of the same engine `build.sh`
+builds — no engine, chess, or checkers code changed to add it, beyond
+one additive wrapper (`Game::getLegalMovesFor()`, a public non-virtual
+pass-through to the existing legal-move hook, used to highlight a
+selected piece's destination squares).
+
+```
+gui/
+  imgui/          vendored Dear ImGui core + GLFW/OpenGL3 backends
+                  (from https://github.com/ocornut/imgui, tag v1.91.5)
+  GuiObserver.h   GameObserver that stores the latest event as plain
+                  state (status text, move log) for the UI to read
+  gui_main.cpp    window setup, board rendering, click-to-move input
+  build_gui.sh    build script (see prerequisites below)
+```
+
+**Prerequisites** (one-time, not installed by the script):
+- Linux (Debian/Ubuntu): `sudo apt install libglfw3-dev libgl1-mesa-dev pkg-config`
+- macOS (Homebrew): `brew install glfw`
+- Windows: via MSYS2/MinGW: `pacman -S mingw-w64-x86_64-glfw`
+
+```bash
+./gui/build_gui.sh
+./build/gui_play
+```
+
+Click a piece to select it (legal destinations are marked with a
+dot), click again to move it or click another of your own pieces to
+re-select. Pawn promotion opens a small popup to choose the piece.
+"New Chess Game" / "New Checkers Game" switch games at any time;
+"Undo Last Move" reuses `Game::undoLastMove()`.
+
+This was verified to build and run correctly (headless smoke test via
+Xvfb + software OpenGL rendering, framebuffer captured and inspected)
+before being committed.
+
