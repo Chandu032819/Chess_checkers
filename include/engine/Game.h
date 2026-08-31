@@ -25,6 +25,13 @@ public:
 
     bool undoLastMove();
 
+    // Public read-only wrapper around the legal-move hook. Added for UI
+    // consumers (e.g. a GUI highlighting a selected piece's destination
+    // squares) that need to query legality without duplicating any rule
+    // logic. Delegates entirely to the existing virtual hook -- no new
+    // behavior, just visibility.
+    std::vector<Move> getLegalMovesFor(Position from) const { return getLegalMoves(from); }
+
     void addObserver(GameObserver* obs);
     bool isGameOver() const { return gameOver_; }
     Color getCurrentTurn() const { return currentTurn_; }
